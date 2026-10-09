@@ -23,6 +23,7 @@ Engine::Engine()
 		exit(EXIT_FAILURE);
 	}
 	glfwMakeContextCurrent(window);
+	glfwSwapInterval(1);
 
 	gladLoadGL();
 	// GLAD must be initialized before calling glViewport

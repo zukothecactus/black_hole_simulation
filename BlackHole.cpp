@@ -15,6 +15,11 @@ std::vector<float> BlackHole::GenerateVertices()
 	vertices.push_back(position.y);
 	vertices.push_back(0.0f); // z-coordinate for 2D rendering
 
+	//rgb values for black hole color (black)
+	vertices.push_back(0.0f); 
+	vertices.push_back(0.0f); 
+	vertices.push_back(0.0f);
+
 	for (int i = 0; i <= 100;i++)
 	{
 		float angle = 2.0f * PI * float(i) / float(100);
@@ -23,6 +28,10 @@ std::vector<float> BlackHole::GenerateVertices()
 		vertices.push_back(x);
 		vertices.push_back(y);
 		vertices.push_back(0.0f); // z-coordinate for 2D rendering
+		//rgb values for black hole color (black)
+		vertices.push_back(0.0f); 
+		vertices.push_back(0.0f); 
+		vertices.push_back(0.0f);
 	}
 	return vertices;
 }
