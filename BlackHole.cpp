@@ -1,6 +1,6 @@
 #include "BlackHole.h"
 
-BlackHole:: BlackHole(glm::vec2 pos, double m)
+BlackHole:: BlackHole(glm::vec3 pos, double m)
 {
 	position = pos;
 	mass = m;
@@ -11,27 +11,39 @@ BlackHole:: BlackHole(glm::vec2 pos, double m)
 std::vector<float> BlackHole::GenerateVertices()
 {
 	std::vector<float> vertices;
-	vertices.push_back(position.x);
-	vertices.push_back(position.y);
-	vertices.push_back(0.0f); // z-coordinate for 2D rendering
+	int stacks = 50; // Number of stacks for the circle approximation
+	int slices = 50; // Number of slices for the circle approximation
 
-	//rgb values for black hole color (black)
-	vertices.push_back(0.0f); 
-	vertices.push_back(0.0f); 
-	vertices.push_back(0.0f);
-
-	for (int i = 0; i <= 100;i++)
+	for (int i = 0; i < stacks; i++)
 	{
-		float angle = 2.0f * PI * float(i) / float(100);
-		float x = position.x + radius * cos(angle);
-		float y = position.y + radius * sin(angle);
-		vertices.push_back(x);
-		vertices.push_back(y);
-		vertices.push_back(0.0f); // z-coordinate for 2D rendering
-		//rgb values for black hole color (black)
-		vertices.push_back(0.0f); 
-		vertices.push_back(0.0f); 
-		vertices.push_back(0.0f);
+		float phi1 = PI * float(i) / float(stacks);
+		float phi2 = PI * float(i + 1) / float(stacks);
+
+		for (int j = 0; j < slices; ++j)
+		{
+			float theta1 = 2.0f * PI * float(j) / float(slices);
+			float theta2 = 2.0f * PI * float(j + 1) / float(slices);
+
+			auto pushVertex = [&](float p, float t)
+				{
+				vertices.push_back(position.x + radius * sin(p) * cos(t));
+				vertices.push_back(position.y + radius * cos(p));
+				vertices.push_back(position.z + radius * sin(p) * sin(t));
+				//rgb values for black hole color (black)
+				vertices.push_back(0.0f); 
+				vertices.push_back(0.0f); 
+				vertices.push_back(0.0f);
+				};
+			//triangle 1
+			pushVertex(phi1, theta1);
+			pushVertex(phi2, theta1);
+			pushVertex(phi1, theta2);
+
+
+			pushVertex(phi2, theta2);
+			pushVertex(phi2, theta2);
+			pushVertex(phi1, theta2);
+		}
 	}
 	return vertices;
 }

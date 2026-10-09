@@ -38,12 +38,7 @@ Engine::Engine()
 void Engine::Update()
 {
 	glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT);
-	float left = -width;
-	float right = width;
-	float bottom = -height;
-	float top = height;
-	glm::mat4 projection = glm::ortho(left, right, bottom, top, -1.0f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glm::mat4 modelView = glm::mat4(1.0f);
 }

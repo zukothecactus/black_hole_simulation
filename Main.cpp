@@ -12,6 +12,7 @@
 #include "VBO.h"
 #include "EBO.h"
 #include "LightRay.h"
+#include "Camera.h"
 
 int main()
 {
@@ -19,7 +20,7 @@ int main()
 
 	Shader shaderProgram("default.vert", "default.frag");
 
-	BlackHole blackHole(glm::vec2(0.0f, 0.0f), 1.0e26);
+	BlackHole blackHole(glm::vec3(0.0f, 0.0f, 0.0f), 1.0e26);
 	std::vector<float> blackHoleVertices = blackHole.GenerateVertices();
 
 	VAO VAO1;
@@ -52,18 +53,27 @@ int main()
 	glEnable(GL_PROGRAM_POINT_SIZE);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
+	glEnable(GL_DEPTH_TEST);
 	GLint isPointLoc = glGetUniformLocation(shaderProgram.ID, "isPoint");
+
+	//camera activation
+	Camera camera(glm::vec3(0.0f, 0.0f, 3.0f), 800.0f, 600.0f);
 
 	while (!glfwWindowShouldClose(engine.window))
 	{
 		engine.Update();
 		shaderProgram.Activate();
 
+		camera.Inputs(engine.window);
+		camera.updateMatrix(45.0f, 800.0f / 600.0f, 0.1f, 100.0f, shaderProgram);
+
+		glm::mat4 model = glm::mat4(1.0f);
+		glUniformMatrix4fv(glGetUniformLocation(shaderProgram.ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
+
 		// 1. Draw Black Hole
 		glUniform1i(isPointLoc, GL_FALSE);
 		VAO1.Bind();
-		glDrawArrays(GL_TRIANGLE_FAN, 0, blackHoleVertices.size() / 3);
+		glDrawArrays(GL_TRIANGLES, 0, blackHoleVertices.size() / 6);
 		VAO1.Unbind();
 		// 2. Draw Rays
 		rayVAO.Bind();

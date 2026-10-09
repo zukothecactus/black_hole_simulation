@@ -8,10 +8,10 @@
 class LightRay
 {
 public:
-	glm::vec2 position;
-	glm::vec2 velocity;
-	std::deque<glm::vec2> history;
-	int maxTrailLength = 50;
+	glm::vec3 position;
+	glm::vec3 velocity;
+	std::deque<glm::vec3> history;
+	int maxTrailLength = 1000;
 	float initialY;
 
 	bool isSwallowed;
@@ -20,7 +20,7 @@ public:
 	std::vector<float> GenerateVertices();
 
 	//takes in the black hole parameters
-	void travel(glm::vec2 bhPosition, double bhMass);
+	void travel(glm::vec3 bhPosition, double bhMass);
 };
 
 
