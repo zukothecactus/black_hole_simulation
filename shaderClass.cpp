@@ -43,10 +43,29 @@ Shader::Shader(const char* vertexFile, const char* fragmentFIle)
 	glDeleteShader(fragmentShader);
 }
 
+Shader::Shader(const char* computeFile)
+{
+	std::string computeCode = get_file_contents(computeFile);
+	const char* computeSource = computeCode.c_str();
+
+	GLuint computeShader = glCreateShader(GL_COMPUTE_SHADER);
+	glShaderSource(computeShader, 1, &computeSource, NULL);
+	glCompileShader(computeShader);
+	CompileErrors(computeShader, "COMPUTE");
+
+	ID = glCreateProgram();
+	glAttachShader(ID, computeShader);
+	glLinkProgram(ID);
+	CompileErrors(ID, "PROGRAM");
+
+	glDeleteShader(computeShader);
+}
+
 void Shader::Activate()
 {
 	glUseProgram(ID);
 }
+
 void Shader::Delete()
 {
 	glDeleteProgram(ID);

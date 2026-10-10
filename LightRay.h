@@ -13,14 +13,16 @@ public:
 	std::deque<glm::vec3> history;
 	int maxTrailLength = 1000;
 	float initialY;
+	float initialZ;
 
 	bool isSwallowed;
 	bool isOffScreen;
-	LightRay(float startY);
+	LightRay(float startY, float startZ);
 	std::vector<float> GenerateVertices();
 
 	//takes in the black hole parameters
 	void travel(glm::vec3 bhPosition, double bhMass);
+	
 };
 
 

@@ -5,10 +5,11 @@ const float c = 299792458.0f; // Speed of light in meters per second
 const double G = 6.67430e-11; // Gravitational constant in m^3 kg^-1 s^-2
 const float c_visual = 0.001f; // Visual representation of the speed of light for scaling purposes
 
-LightRay::LightRay(float startY)
+LightRay::LightRay(float startY, float startZ)
 {
 	initialY = startY;
-	position = glm::vec3(-1.0f, initialY, 0.0f); //Start on the left (visible)
+	initialZ = startZ;
+	position = glm::vec3(-1.0f, initialY, initialZ); //Start on the left (visible)
 	velocity = glm::vec3(c_visual, 0.0f, 0.0f); //Initial velocity to the right
 	isSwallowed = false;
 	isOffScreen = false;

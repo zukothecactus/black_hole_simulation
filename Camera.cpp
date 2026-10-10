@@ -2,40 +2,40 @@
 
 Camera::Camera(glm::vec3 position, float windowHeight, float windowWidth)
 {
-	Position = position;
 	lastX = windowWidth / 2.0f;
 	lastY = windowHeight / 2.0f;
+    // Calculate initial distance based on the provided position
+    Distance = glm::length(position - glm::vec3(0.0f, 0.0f, 0.0f));
 	updateCameraVectors();
 }
 
 void Camera::updateCameraVectors()
 {
-	//calculating the new front vector using euler angles
+	//calculating the viewing direction based on yaw and pitch angles
 	glm::vec3 front;
 	front.x = cos(glm::radians(Yaw)) * cos(glm::radians(Pitch));
 	front.y = sin(glm::radians(Pitch));
 	front.z = sin(glm::radians(Yaw)) * cos(glm::radians(Pitch));
-
 	Front = glm::normalize(front);
+
+    //orbital logic
+	glm::vec3 target = glm::vec3(0.0f, 0.0f, 0.0f); //black hole
+    Position = target - Front * Distance;
+
 	Right = glm::normalize(glm::cross(Front, WorldUp));
 	Up = glm::normalize(glm::cross(Right, Front));
 }
 
 void Camera::Inputs(GLFWwindow* window)
 {
-    // Keyboard movement
+    // W and S control orbital zoom
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        Position += Speed * Front;
+        Distance -= Speed;
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        Position -= Speed * Front;
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        Position -= glm::normalize(glm::cross(Front, Up)) * Speed;
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        Position += glm::normalize(glm::cross(Front, Up)) * Speed;
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
-        Position += Speed * WorldUp;
-    if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
-        Position -= Speed * WorldUp;
+        Distance += Speed;
+
+	//limit the distance to avoid going inside the black hole
+	if (Distance < 0.2f) Distance = 0.2f;
 
     // Mouse look (held down left click)
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
@@ -84,4 +84,15 @@ void Camera::updateMatrix(float FOVdeg, float aspectRatio, float nearPlane, floa
     // Sends the matrices to the vertex shader
     glUniformMatrix4fv(glGetUniformLocation(shader.ID, "view"), 1, GL_FALSE, glm::value_ptr(view));
     glUniformMatrix4fv(glGetUniformLocation(shader.ID, "projection"), 1, GL_FALSE, glm::value_ptr(proj));
+}
+
+void Camera::scrollCallback(GLFWwindow* window, double xoffset, double yoffset)
+{
+    Camera* camera = static_cast<Camera*>(glfwGetWindowUserPointer(window));
+    if (camera)
+    {
+        camera->Distance -= static_cast<float>(yoffset) * camera->Speed;
+        if (camera->Distance < 0.2f) camera->Distance = 0.2f; // Limit the distance
+        camera->updateCameraVectors();
+    }
 }

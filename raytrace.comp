@@ -1,0 +1,115 @@
+#version 430 core
+
+layout(local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
+
+struct Ray {
+	vec4 position; //xyz = position, w = isSwallowed (1.0 or 0.0)
+	vec4 velocity; // xyz = velocity, w = isOffScreen (1.0 or 0.0)
+};
+
+layout(std430, binding = 0) buffer RayBuffer {
+	Ray rays[];
+};
+
+uniform vec3 bhPosition;
+uniform float bhMass;
+uniform float dt; // Time step for the simulation
+uniform int trailLength; // Length of the trail for each ray
+
+const float G = 6.67430e-11; // Gravitational constant
+const float c = 299792458.0; // Speed of light in m/s
+
+// Helper function to calculate Schwarzschild radius dynamically
+// Cant be a uniform because it depends on bhMass, which is assigned at runtime, while const requires compile time assignment
+float get_rs() {
+    return (2.0 * G * bhMass) / (c * c);
+}
+
+vec3 getAcceleration(vec3 position, vec3 velocity)
+{
+    vec3 r_vec_current = position - bhPosition;
+    float r_current = length(r_vec_current);
+
+    // Revert back to using the visual velocity
+    vec3 cross_product = cross(r_vec_current, velocity);
+    float h2 = dot(cross_product, cross_product);
+
+    float rs = get_rs();
+    float coeff = -1.5 * rs * h2 / pow(r_current, 5.0);
+
+    return coeff * r_vec_current;
+}
+
+void main()
+{
+	uint idx = gl_GlobalInvocationID.x;
+	//total active rays is rays.length() / trailLength, because each ray has trailLength number of segments
+	if(idx >= (uint(rays.length()) / uint(trailLength))) return;
+
+	// Calculate the index for the head of this specific ray's trail
+	uint headIdx = idx * uint(trailLength);
+
+	//read current state of the ray
+	vec3 position = rays[headIdx].position.xyz;
+	vec3 velocity = rays[headIdx].velocity.xyz;
+	bool isSwallowed = rays[headIdx].position.w > 0.5;
+	bool isOffScreen = rays[headIdx].velocity.w > 0.5;
+
+	if (isSwallowed || isOffScreen) 
+    {
+        // Mimic history.pop_back() by finding the oldest active point in the trail 
+        // and moving it far off-screen so OpenGL culls it.
+        for (int i = trailLength - 1; i >= 0; i--) 
+        {
+            // Check if this point hasn't been popped yet
+            if (rays[headIdx + uint(i)].position.x > -900.0) 
+            {
+                // Move the point to an invisible coordinate
+                rays[headIdx + uint(i)].position = vec4(-1000.0, -1000.0, -1000.0, 1.0);
+                break; // Pop exactly one point per frame
+            }
+        }
+        return; // Skip physics integration while popping
+    }
+
+	float rs = get_rs();
+	//event horizon check
+	float r = length(position - bhPosition);
+	if(r<=rs)
+	{
+		rays[headIdx].position.w = 1.0; // Mark as swallowed
+		rays[headIdx].velocity = vec4(1.0); // Mark as off-screen
+		return;
+	}
+
+	// RK4 Integration
+    vec3 k1_v = getAcceleration(position, velocity);
+    vec3 k1_p = velocity;
+
+    vec3 k2_v = getAcceleration(position + k1_p * (dt * 0.5), velocity + k1_v * (dt * 0.5));
+    vec3 k2_p = velocity + k1_v * (dt * 0.5);
+
+    vec3 k3_v = getAcceleration(position + k2_p * (dt * 0.5), velocity + k2_v * (dt * 0.5));
+    vec3 k3_p = velocity + k2_v * (dt * 0.5);
+
+    vec3 k4_v = getAcceleration(position + k3_p * dt, velocity + k3_v * dt);
+    vec3 k4_p = velocity + k3_v * dt;
+
+    velocity += (dt / 6.0) * (k1_v + 2.0 * k2_v + 2.0 * k3_v + k4_v);
+    position += (dt / 6.0) * (k1_p + 2.0 * k2_p + 2.0 * k3_p + k4_p);
+
+	//Off screen check
+	if(abs(position.x) > 2.0 || abs(position.y) > 2.0 || abs(position.z) > 2.0)
+	{
+		rays[headIdx].velocity.w = 1.0; // Mark as off-screen
+	}
+
+	// SHIFT THE TRAIL: Move all older positions down by one index
+	for(int i = trailLength - 1; i > 0; i--) {
+		rays[headIdx + uint(i)].position = rays[headIdx + uint(i - 1)].position;
+	}
+
+	// Write back updated state to the head of the ray
+	rays[headIdx].position = vec4(position, rays[headIdx].position.w); 
+	rays[headIdx].velocity = vec4(velocity, rays[headIdx].velocity.w); 
+}

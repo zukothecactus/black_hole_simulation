@@ -22,6 +22,8 @@ public:
 	float Speed = 0.05f;
 	float Sensitivity = 0.1f;
 
+	float Distance = 3.0f; // Distance from the black hole
+
 	bool firstMouse = true;
 	float lastX, lastY;
 
@@ -30,8 +32,8 @@ public:
 	void updateMatrix(float FOVdeg, float aspectRation, float nearPlane, float farPlane, Shader& shader);
 	void Inputs(GLFWwindow* window);
 
-private:
 	void updateCameraVectors();
+	static void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 };
 
 #endif // CAMERA_H
