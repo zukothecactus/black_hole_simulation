@@ -27,6 +27,7 @@
     <ClCompile Include="LightRay.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="shaderClass.cpp" />
+    <ClCompile Include="stb.cpp" />
     <ClCompile Include="VAO.cpp" />
     <ClCompile Include="VBO.cpp" />
   </ItemGroup>
@@ -46,6 +47,14 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="default.vert" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="back.jpg" />
+    <Image Include="bottom.jpg" />
+    <Image Include="front.jpg" />
+    <Image Include="left.jpg" />
+    <Image Include="right.jpg" />
+    <Image Include="top.jpg" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>

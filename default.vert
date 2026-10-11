@@ -1,18 +1,12 @@
 #version 430 core
-layout(location = 0) in vec4 aPos;
-layout(location = 1) in vec4 aColor;
+layout(location = 0) in vec3 aPos;
+layout(location = 1) in vec2 aTexCoord; // Switched from aColor to texture coordinates
 
-out vec3 ourColor;
-
-uniform mat4 model;
-uniform mat4 view;
-uniform mat4 projection;
-
-uniform float pointSize;
+out vec2 TexCoords;
 
 void main()
 {
-	gl_PointSize = pointSize;
-	gl_Position = projection * view * model * vec4(aPos.xyz, 1.0);
-	ourColor = aColor.rgb;
+    // The quad is already in Normalized Device Coordinates (-1 to 1)
+    gl_Position = vec4(aPos, 1.0);
+    TexCoords = aTexCoord;
 }

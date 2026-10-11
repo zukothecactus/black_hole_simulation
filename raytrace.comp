@@ -1,27 +1,24 @@
 #version 430 core
 
-layout(local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
+// 8x8 local workgroup matches the dispatch in Main.cpp
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+// Output texture
+layout(rgba32f, binding = 0) uniform image2D imgOutput;
 
-struct Ray {
-	vec4 position; //xyz = position, w = isSwallowed (1.0 or 0.0)
-	vec4 velocity; // xyz = velocity, w = isOffScreen (1.0 or 0.0)
-	vec4 color;    // rgba color of the ray
-};
-
-layout(std430, binding = 0) buffer RayBuffer {
-	Ray rays[];
-};
+layout(binding = 1) uniform samplerCube skybox; // Cubemap for the starfield background
 
 uniform vec3 bhPosition;
 uniform float bhMass;
 uniform float dt; // Time step for the simulation
-uniform int trailLength; // Length of the trail for each ray
 
-const float G = 6.67430e-11; // Gravitational constant
-const float c = 299792458.0; // Speed of light in m/s
+uniform vec3 camPos;
+uniform vec3 camFront;
+uniform vec3 camUp;
+uniform vec3 camRight;
 
-// Helper function to calculate Schwarzschild radius dynamically
-// Cant be a uniform because it depends on bhMass, which is assigned at runtime, while const requires compile time assignment
+const float G = 6.67430e-11;
+const float c = 299792458.0;
+
 float get_rs() {
     return (2.0 * G * bhMass) / (c * c);
 }
@@ -30,130 +27,105 @@ vec3 getAcceleration(vec3 position, vec3 velocity)
 {
     vec3 r_vec_current = position - bhPosition;
     float r_current = length(r_vec_current);
-
-    // Revert back to using the visual velocity
     vec3 cross_product = cross(r_vec_current, velocity);
     float h2 = dot(cross_product, cross_product);
-
     float rs = get_rs();
     float coeff = -1.5 * rs * h2 / pow(r_current, 5.0);
-
     return coeff * r_vec_current;
 }
 
 void main()
 {
-	uint idx = gl_GlobalInvocationID.x;
-	//total active rays is rays.length() / trailLength, because each ray has trailLength number of segments
-	if(idx >= (uint(rays.length()) / uint(trailLength))) return;
+    ivec2 pixelCoords = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 dims = imageSize(imgOutput);
+    
+    // Ensure we don't write outside the texture bounds
+    if(pixelCoords.x >= dims.x || pixelCoords.y >= dims.y) return;
 
-	// Calculate the index for the head of this specific ray's trail
-	uint headIdx = idx * uint(trailLength);
+    // Remove the aspect multiplication from uv.x since we handle it in the ray direction
+    vec2 uv = vec2(pixelCoords) / vec2(dims) * 2.0 - 1.0;
+    float aspect = float(dims.x) / float(dims.y);
 
-	//read current state of the ray
-	vec3 position = rays[headIdx].position.xyz;
-	vec3 velocity = rays[headIdx].velocity.xyz;
-	bool isSwallowed = rays[headIdx].position.w > 0.5;
-	bool isOffScreen = rays[headIdx].velocity.w > 0.5;
+    // Calculate direction based on the camera's basis vectors
+    vec3 rayDir = normalize(camFront + uv.x * aspect * camRight + uv.y * camUp);
 
-	if (isSwallowed || isOffScreen) 
+    vec3 position = camPos; 
+    vec3 velocity = rayDir * 0.01; // Initial photon speed
+    vec4 finalColor = vec4(0.0, 0.0, 0.0, 1.0); // Default to black
+    
+    float rs = get_rs();
+    const int MAX_STEPS = 10000; // Prevent infinite loops
+
+    for(int step = 0; step < MAX_STEPS; step++)
     {
-        // Mimic history.pop_back() by finding the oldest active point in the trail 
-        // and moving it far off-screen so OpenGL culls it.
-        for (int i = trailLength - 1; i >= 0; i--) 
+        // 1. RK4 Integration
+        vec3 k1_v = getAcceleration(position, velocity);
+        vec3 k1_p = velocity;
+
+        vec3 k2_v = getAcceleration(position + k1_p * (dt * 0.5), velocity + k1_v * (dt * 0.5));
+        vec3 k2_p = velocity + k1_v * (dt * 0.5);
+
+        vec3 k3_v = getAcceleration(position + k2_p * (dt * 0.5), velocity + k2_v * (dt * 0.5));
+        vec3 k3_p = velocity + k2_v * (dt * 0.5);
+
+        vec3 k4_v = getAcceleration(position + k3_p * dt, velocity + k3_v * dt);
+        vec3 k4_p = velocity + k3_v * dt;
+
+        vec3 new_velocity = velocity + (dt / 6.0) * (k1_v + 2.0 * k2_v + 2.0 * k3_v + k4_v);
+        vec3 new_position = position + (dt / 6.0) * (k1_p + 2.0 * k2_p + 2.0 * k3_p + k4_p);
+
+        // 2. Event Horizon Check
+        float r = length(new_position - bhPosition);
+        if(r <= rs)
         {
-            // Check if this point hasn't been popped yet
-            if (rays[headIdx + uint(i)].position.x > -900.0) 
+            finalColor = vec4(0.0, 0.0, 0.0, 1.0); // Pitch black
+            break; 
+        }
+
+        // 3. Accretion Disk Check (Equatorial crossing)
+        if (position.y * new_position.y <= 0.0) 
+        {
+            if (r > 1.5 * rs && r < 4.0 * rs) 
             {
-                // Move the point to an invisible coordinate
-                rays[headIdx + uint(i)].position = vec4(-1000.0, -1000.0, -1000.0, 1.0);
-                break; // Pop exactly one point per frame
+                float v_orb = sqrt(G * bhMass / r);
+                vec3 r_dir = normalize(vec3(new_position.x, 0.0, new_position.z));
+                vec3 v_vec = v_orb * vec3(-r_dir.z, 0.0, r_dir.x); 
+                
+                vec3 beta = v_vec / c;
+                float beta_mag = length(beta);
+                float gamma = 1.0 / sqrt(1.0 - beta_mag * beta_mag);
+                
+                vec3 photon_dir = normalize(-velocity);
+                float doppler = 1.0 / (gamma * (1.0 - dot(beta, photon_dir)));
+                float intensity = pow(doppler, 3.0);
+                
+                vec3 diskBaseColor = vec3(1.0, 0.4, 0.1); 
+                finalColor = vec4(diskBaseColor * intensity, 1.0);
+                break; // Stop tracing once it hits the solid disk
             }
         }
-        return; // Skip physics integration while popping
-    }
 
-	float rs = get_rs();
-	//event horizon check
-	float r = length(position - bhPosition);
-	if(r<=rs)
-	{
-		rays[headIdx].position.w = 1.0; // Mark as swallowed
-		rays[headIdx].velocity = vec4(1.0); // Mark as off-screen
-		return;
-	}
-
-	// RK4 Integration
-    vec3 k1_v = getAcceleration(position, velocity);
-    vec3 k1_p = velocity;
-
-    vec3 k2_v = getAcceleration(position + k1_p * (dt * 0.5), velocity + k1_v * (dt * 0.5));
-    vec3 k2_p = velocity + k1_v * (dt * 0.5);
-
-    vec3 k3_v = getAcceleration(position + k2_p * (dt * 0.5), velocity + k2_v * (dt * 0.5));
-    vec3 k3_p = velocity + k2_v * (dt * 0.5);
-
-    vec3 k4_v = getAcceleration(position + k3_p * dt, velocity + k3_v * dt);
-    vec3 k4_p = velocity + k3_v * dt;
-
-    velocity += (dt / 6.0) * (k1_v + 2.0 * k2_v + 2.0 * k3_v + k4_v);
-    vec3 new_position = position + (dt / 6.0) * (k1_p + 2.0 * k2_p + 2.0 * k3_p + k4_p);
-
-    // 1. Check for equatorial plane crossing (y = 0)
-    if (position.y * new_position.y <= 0.0) 
-    {
-        float rs = get_rs();
-        float r_disk = length(new_position);
-        
-        // Define disk boundaries (e.g., from 1.5 to 4.0 Schwarzschild radii)
-        if (r_disk > 1.5 * rs && r_disk < 4.0 * rs) 
+        // 4. Escape Check (Ray leaves the simulation area)
+        if(abs(new_position.x) > 20.0 || abs(new_position.y) > 20.0 || abs(new_position.z) > 20.0)
         {
-            // 2. Calculate Keplerian orbital velocity magnitude
-            float v_orb = sqrt(G * bhMass / r_disk);
-            
-            // 3. Disk velocity vector (rotating counter-clockwise in x-z plane)
-            vec3 r_dir = normalize(vec3(new_position.x, 0.0, new_position.z));
-            vec3 v_vec = v_orb * vec3(-r_dir.z, 0.0, r_dir.x); 
-            
-            // Normalize v_vec relative to c for relativity calculations
-            vec3 beta = v_vec / c;
-            float beta_mag = length(beta);
-            float gamma = 1.0 / sqrt(1.0 - beta_mag * beta_mag);
-            
-            // 4. Calculate Doppler factor (D)
-            // The photon direction is opposite to the ray tracing direction
-            vec3 photon_dir = normalize(-velocity);
-            float doppler = 1.0 / (gamma * (1.0 - dot(beta, photon_dir)));
-            
-            // Beaming effect: Intensity scales with D^3 or D^4
-            float intensity = pow(doppler, 3.0);
-            
-            // Map blueshift to blue/white, redshift to red/orange
-            vec3 diskBaseColor = vec3(1.0, 0.4, 0.1); // Base orange
-            vec3 finalColor = diskBaseColor * intensity;
-            
-            // Mark as hitting the disk and update color
-            rays[headIdx].color = vec4(finalColor, 1.0);
-            rays[headIdx].velocity.w = 1.0; // Stop the ray (acts like isOffScreen)
-            return;
-        }
-    }
+            vec3 dir = normalize(new_velocity);
     
-    position = new_position;
+            // Creates a 3D grid pattern to clearly visualize the gravitational distortion
+            float gridX = step(0.95, fract(dir.x * 10.0));
+            float gridY = step(0.95, fract(dir.y * 10.0));
+            float gridZ = step(0.95, fract(dir.z * 10.0));
+    
+            float combinedGrid = clamp(gridX + gridY + gridZ, 0.0, 1.0);
+    
+            // Output a white grid on a dark blue background
+            finalColor = vec4(vec3(0.0, 0.1, 0.2) + combinedGrid, 1.0);
+            break; 
+        }
 
-	//Off screen check
-	if(abs(position.x) > 5.0 || abs(position.y) > 5.0 || abs(position.z) > 5.0)
-	{
-		rays[headIdx].velocity.w = 1.0; // Mark as off-screen
-	}
+        position = new_position;
+        velocity = new_velocity;
+    }
 
-	// SHIFT THE TRAIL: Move all older positions down by one index
-	for(int i = trailLength - 1; i > 0; i--) {
-		rays[headIdx + uint(i)].position = rays[headIdx + uint(i - 1)].position;
-        //rays[headIdx + uint(i)].color = rays[headIdx + uint(i - 1)].color;
-	}
-
-	// Write back updated state to the head of the ray
-	rays[headIdx].position = vec4(position, rays[headIdx].position.w); 
-	rays[headIdx].velocity = vec4(velocity, rays[headIdx].velocity.w); 
+    // Write the computed color to the pixel
+    imageStore(imgOutput, pixelCoords, finalColor);
 }

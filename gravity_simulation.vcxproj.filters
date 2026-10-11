@@ -16,6 +16,9 @@
     <Filter Include="Resource Files\Shaders">
       <UniqueIdentifier>{ac45142d-2e6a-4d8e-bfcd-a3e46fa654ed}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Resource Files\Images">
+      <UniqueIdentifier>{1aba9bbb-3ad7-4722-8be9-e186bdf5a817}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -46,6 +49,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Camera.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="stb.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -87,5 +93,25 @@
     <Text Include="default.vert">
       <Filter>Resource Files\Shaders</Filter>
     </Text>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="back.jpg">
+      <Filter>Resource Files\Images</Filter>
+    </Image>
+    <Image Include="bottom.jpg">
+      <Filter>Resource Files\Images</Filter>
+    </Image>
+    <Image Include="front.jpg">
+      <Filter>Resource Files\Images</Filter>
+    </Image>
+    <Image Include="left.jpg">
+      <Filter>Resource Files\Images</Filter>
+    </Image>
+    <Image Include="right.jpg">
+      <Filter>Resource Files\Images</Filter>
+    </Image>
+    <Image Include="top.jpg">
+      <Filter>Resource Files\Images</Filter>
+    </Image>
   </ItemGroup>
 </Project>

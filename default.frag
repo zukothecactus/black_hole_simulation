@@ -1,26 +1,13 @@
 #version 430 core
 out vec4 FragColor;
-in vec3 ourColor;
 
-uniform bool isPoint;
+in vec2 TexCoords;
+
+// The output texture from the compute shader
+uniform sampler2D screenTexture; 
 
 void main()
 {
-	if (isPoint)
-    {
-        vec2 circCoord = gl_PointCoord - vec2(0.5);
-        float dist = length(circCoord);
-
-        if (dist > 0.5) 
-        {
-            discard;
-        }
-
-        float alpha = 1.0 - smoothstep(0.3, 0.5, dist);
-        FragColor = vec4(ourColor, alpha);
-    }
-    else
-    {
-        FragColor = vec4(ourColor, 1.0);
-    }
+    // Sample the exact pixel color calculated by the compute shader
+    FragColor = texture(screenTexture, TexCoords);
 }
