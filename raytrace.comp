@@ -5,6 +5,7 @@ layout(local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
 struct Ray {
 	vec4 position; //xyz = position, w = isSwallowed (1.0 or 0.0)
 	vec4 velocity; // xyz = velocity, w = isOffScreen (1.0 or 0.0)
+	vec4 color;    // rgba color of the ray
 };
 
 layout(std430, binding = 0) buffer RayBuffer {
@@ -96,10 +97,52 @@ void main()
     vec3 k4_p = velocity + k3_v * dt;
 
     velocity += (dt / 6.0) * (k1_v + 2.0 * k2_v + 2.0 * k3_v + k4_v);
-    position += (dt / 6.0) * (k1_p + 2.0 * k2_p + 2.0 * k3_p + k4_p);
+    vec3 new_position = position + (dt / 6.0) * (k1_p + 2.0 * k2_p + 2.0 * k3_p + k4_p);
+
+    // 1. Check for equatorial plane crossing (y = 0)
+    if (position.y * new_position.y <= 0.0) 
+    {
+        float rs = get_rs();
+        float r_disk = length(new_position);
+        
+        // Define disk boundaries (e.g., from 1.5 to 4.0 Schwarzschild radii)
+        if (r_disk > 1.5 * rs && r_disk < 4.0 * rs) 
+        {
+            // 2. Calculate Keplerian orbital velocity magnitude
+            float v_orb = sqrt(G * bhMass / r_disk);
+            
+            // 3. Disk velocity vector (rotating counter-clockwise in x-z plane)
+            vec3 r_dir = normalize(vec3(new_position.x, 0.0, new_position.z));
+            vec3 v_vec = v_orb * vec3(-r_dir.z, 0.0, r_dir.x); 
+            
+            // Normalize v_vec relative to c for relativity calculations
+            vec3 beta = v_vec / c;
+            float beta_mag = length(beta);
+            float gamma = 1.0 / sqrt(1.0 - beta_mag * beta_mag);
+            
+            // 4. Calculate Doppler factor (D)
+            // The photon direction is opposite to the ray tracing direction
+            vec3 photon_dir = normalize(-velocity);
+            float doppler = 1.0 / (gamma * (1.0 - dot(beta, photon_dir)));
+            
+            // Beaming effect: Intensity scales with D^3 or D^4
+            float intensity = pow(doppler, 3.0);
+            
+            // Map blueshift to blue/white, redshift to red/orange
+            vec3 diskBaseColor = vec3(1.0, 0.4, 0.1); // Base orange
+            vec3 finalColor = diskBaseColor * intensity;
+            
+            // Mark as hitting the disk and update color
+            rays[headIdx].color = vec4(finalColor, 1.0);
+            rays[headIdx].velocity.w = 1.0; // Stop the ray (acts like isOffScreen)
+            return;
+        }
+    }
+    
+    position = new_position;
 
 	//Off screen check
-	if(abs(position.x) > 2.0 || abs(position.y) > 2.0 || abs(position.z) > 2.0)
+	if(abs(position.x) > 5.0 || abs(position.y) > 5.0 || abs(position.z) > 5.0)
 	{
 		rays[headIdx].velocity.w = 1.0; // Mark as off-screen
 	}
@@ -107,6 +150,7 @@ void main()
 	// SHIFT THE TRAIL: Move all older positions down by one index
 	for(int i = trailLength - 1; i > 0; i--) {
 		rays[headIdx + uint(i)].position = rays[headIdx + uint(i - 1)].position;
+        //rays[headIdx + uint(i)].color = rays[headIdx + uint(i - 1)].color;
 	}
 
 	// Write back updated state to the head of the ray

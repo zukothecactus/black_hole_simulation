@@ -18,6 +18,7 @@ struct GPURay
 {
 	glm::vec4 position; //xyz = position, w = isSwallowed
 	glm::vec4 velocity; //xyz = velocity, w = isOffScreen
+	glm::vec4 color;	//rgba color
 };
 
 int main()
@@ -48,9 +49,9 @@ int main()
 	GLint isPointLoc = glGetUniformLocation(shaderProgram.ID, "isPoint");
 
 	//SSBO initialization
-	const int RAYS_PER_SIDE = 20; // 20x20 grid = 400 total rays
+	const int RAYS_PER_SIDE = 100; // 100x100 grid = 10000 total rays
 	const int NUM_RAYS = RAYS_PER_SIDE * RAYS_PER_SIDE;
-	const int TRAIL_LENGTH = 100;
+	const int TRAIL_LENGTH = 350;
 	const int TOTAL_POINTS = NUM_RAYS * TRAIL_LENGTH;
 
 	std::vector<GPURay> initialRays(TOTAL_POINTS);
@@ -60,18 +61,21 @@ int main()
 		{
 			int headIdx = (i * RAYS_PER_SIDE + j) * TRAIL_LENGTH;
 
-			// Distribute rays in a grid from -1.0 to 3.0 on both Y and Z axes
-			float y = -0.5f + 1.0f * (float)i / (RAYS_PER_SIDE - 1);
-			float z = -0.5f + 1.0f * (float)j / (RAYS_PER_SIDE - 1);
+			// Spread the rays over a much larger area to cover the whole disk and lensing region
+			//-1.0 is the starting position
+			//2.0 is the width
+			float x = -1.0f + 2.0f * (float)i / (RAYS_PER_SIDE - 1);
+			float y = -1.0f + 2.0f * (float)j / (RAYS_PER_SIDE - 1);
 
-			// Head of the ray
-			initialRays[headIdx].position = glm::vec4(-1.0f, y, z, 0.0f);
-			initialRays[headIdx].velocity = glm::vec4(0.001f, 0.0f, 0.0f, 0.0f);
-
+			// Start the rays at Z = 4.0 (near the camera) and shoot them towards -Z
+			initialRays[headIdx].position = glm::vec4(x, y, 4.0f, 0.0f);
+			initialRays[headIdx].velocity = glm::vec4(0.0f, 0.0f, -0.001f, 0.0f);
+			initialRays[headIdx].color = glm::vec4(0.3f, 0.1f, 0.5f, 1.0f);
 			// Initialize the trail history underneath the starting point
 			for (int k = 1; k < TRAIL_LENGTH; k++) {
-				initialRays[headIdx + k].position = glm::vec4(-1.5f, y, z, 1.0f);
+				initialRays[headIdx + k].position = glm::vec4(x, y, 4.5f, 1.0f);
 				initialRays[headIdx + k].velocity = glm::vec4(0.0f);
+				//initialRays[headIdx + k].color = glm::vec4(0.0f);
 			}
 		}
 	}
@@ -88,12 +92,15 @@ int main()
 	glBindBuffer(GL_ARRAY_BUFFER, ssbo);
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(GPURay), (void*)0);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(GPURay), (void*)offsetof(GPURay, color));
 	rayVAO.Unbind();
 
 	//camera activation
 	Camera camera(glm::vec3(0.0f, 0.0f, 5.0f), 800.0f, 600.0f);
 	glfwSetWindowUserPointer(engine.window, &camera);
 	glfwSetScrollCallback(engine.window, Camera::scrollCallback);
+
 	while (!glfwWindowShouldClose(engine.window))
 	{
 		engine.Update();
@@ -131,7 +138,6 @@ int main()
 		glUniform1f(glGetUniformLocation(shaderProgram.ID, "pointSize"), 2.0f);
 
 		rayVAO.Bind();
-		glVertexAttrib3f(1, 1.0f, 1.0f, 1.0f); // Make sure color is set here too if needed
 		glDrawArrays(GL_POINTS, 0, TOTAL_POINTS);
 		rayVAO.Unbind();
 

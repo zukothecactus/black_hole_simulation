@@ -30,9 +30,9 @@ std::vector<float> BlackHole::GenerateVertices()
 				vertices.push_back(position.y + radius * cos(p));
 				vertices.push_back(position.z + radius * sin(p) * sin(t));
 				//rgb values for black hole color (black)
-				vertices.push_back(0.0f); 
-				vertices.push_back(0.0f); 
-				vertices.push_back(0.0f);
+				vertices.push_back(0.25f); 
+				vertices.push_back(0.25f); 
+				vertices.push_back(0.25f);
 				};
 			//triangle 1
 			pushVertex(phi1, theta1);

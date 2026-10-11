@@ -1,6 +1,6 @@
 #version 430 core
-layout(location = 0) in vec3 aPos;
-layout(location = 1) in vec3 aColor;
+layout(location = 0) in vec4 aPos;
+layout(location = 1) in vec4 aColor;
 
 out vec3 ourColor;
 
@@ -13,6 +13,6 @@ uniform float pointSize;
 void main()
 {
 	gl_PointSize = pointSize;
-	gl_Position = projection * view * model * vec4(aPos, 1.0);
-	ourColor = aColor;
+	gl_Position = projection * view * model * vec4(aPos.xyz, 1.0);
+	ourColor = aColor.rgb;
 }
