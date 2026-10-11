@@ -342,6 +342,25 @@ vec4 getAcceleration(vec4 pos, vec4 vel) {
     return acc;
 }
 
+float getDiskDensity(vec3 pos, float r)
+{
+    float innerRadius = 2.5; //Just outside the innermost stable circular orbit
+    float outerRadius = 10.0; // Arbitrary outer radius for the disk
+    float scaleHeight = 0.3; // Thickness of the disk
+
+    if(r<innerRadius || r > outerRadius) return 0.0; // Outside the disk
+
+    // Vertical falloff: Denser at the equator (Z=0), fading out upwards/downwards
+    float verticalFalloff = exp(-(pos.z*pos.z) / (scaleHeight*scaleHeight)); // Gaussian falloff in z
+
+    // Radial falloff: Smooth fade-in near the black hole, and smooth fade-out at the edges
+    float radialFalloff = smoothstep(innerRadius, innerRadius + 1.0, r) * 
+                          (1.0 - smoothstep(outerRadius - 4.0, outerRadius, r));
+
+    // The multiplier controls the overall opacity of the gas
+    return verticalFalloff * radialFalloff * 8.0;
+}
+
 void main()
 {
     ivec2 pixelCoords = ivec2(gl_GlobalInvocationID.xy);
@@ -364,6 +383,10 @@ void main()
     float a = spin * M; // Spin parameter
     float event_horizon = M + sqrt(M * M - a * a); // Event horizon radius
 
+    // Variables to track volumetric rendering
+    vec3 accumulatedColor = vec3(0.0);
+    float transmittance = 1.0; // 1.0 means 100% of light can pass through initially
+    vec3 baseEmission = vec3(1.0, 0.35, 0.05); // Deep fiery orange
     const int MAX_STEPS = 10000; // Prevent infinite loops
 
     for(int step = 0; step < MAX_STEPS; step++)
@@ -398,27 +421,55 @@ void main()
             break; // Stop tracing once it crosses the event horizon
         }
         
-        //Escape check: if the photon is far enough away, sample the skybox for color
-        // 2. Escape Check (Adjusted for geometric units)
-        if(length(new_position.yzw) > 50.0)
-        {
-            vec3 dir = normalize(new_velocity.yzw);
-    
-            if(length(new_position.yzw) > 15.0 && dot(new_position.yzw, new_velocity.yzw) > 0.0)
-            {
-                // Procedural 3D grid
-                float gridX = step(0.95, fract(dir.x * 10.0));
-                float gridY = step(0.95, fract(dir.y * 10.0));
-                float gridZ = step(0.95, fract(dir.z * 10.0));
 
-                // If the ray is far enough away AND its velocity is pointing outward
-                float combinedGrid = clamp(gridX + gridY + gridZ, 0.0, 1.0);
-    
-                finalColor = vec4(vec3(0.0, 0.1, 0.2) + combinedGrid, 1.0);
-                break; 
-            }
+        // 2. Volumetric Plasma Disk Integration
+        float density = getDiskDensity(new_position.yzw, r);
+        
+        if (density > 0.0) 
+        {
+            float absorption = 1.2; 
+            float stepOpticalDepth = density * absorption * dynamic_dt;
+            
+            // Calculate how much light makes it through this specific step
+            float stepTransmittance = exp(-stepOpticalDepth);
+
+            // Accumulate glowing emission (Emission strength * density * distance)
+            float emissionStr = 1.5;
+            vec3 stepEmission = baseEmission * density * emissionStr * dynamic_dt;
+            
+            // Add the new light, attenuated by how much gas we've ALREADY passed through
+            accumulatedColor += stepEmission * transmittance;
+
+            // Update the overall transmittance for the next steps
+            transmittance *= stepTransmittance;
         }
 
+        // Early Ray Termination for Density:
+        // If the gas is so thick it's fully opaque, stop calculating to save GPU cycles
+        if (transmittance < 0.01) 
+        {
+            finalColor = vec4(accumulatedColor, 1.0);
+            break;
+        }
+
+        //Escape check: if the photon is far enough away, sample the skybox for color
+        // 3. Escape Check (Adjusted for geometric units)
+        // 4. Escape Check (Now blending with the accumulated volume)
+        if(length(new_position.yzw) > 15.0 && dot(new_position.yzw, new_velocity.yzw) > 0.0)
+        {
+            vec3 dir = normalize(new_velocity.yzw);
+            
+            float gridX = step(0.95, fract(dir.x * 10.0));
+            float gridY = step(0.95, fract(dir.y * 10.0));
+            float gridZ = step(0.95, fract(dir.z * 10.0));
+            float combinedGrid = clamp(gridX + gridY + gridZ, 0.0, 1.0);
+            
+            vec3 backgroundGrid = vec3(0.0, 0.1, 0.2) + combinedGrid;
+            
+            // The final color is the glowing gas PLUS the background grid shining through it
+            finalColor = vec4(accumulatedColor + backgroundGrid * transmittance, 1.0);
+            break; 
+        }
         position = new_position;
         velocity = new_velocity;
     }
