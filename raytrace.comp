@@ -1,37 +1,110 @@
 #version 430 core
 
-// 8x8 local workgroup matches the dispatch in Main.cpp
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
-// Output texture
 layout(rgba32f, binding = 0) uniform image2D imgOutput;
-
-layout(binding = 1) uniform samplerCube skybox; // Cubemap for the starfield background
+layout(binding = 1) uniform samplerCube skybox; 
 
 uniform vec3 bhPosition;
-uniform float bhMass;
-uniform float dt; // Time step for the simulation
+
+// Mass is now strictly 1.0 (Geometric units)
+const float M = 1.0; 
+
+// Spin parameter (0.0 = static, 0.99 = max spin)
+uniform float spin = 0.99; 
+
+// Time step needs to be much smaller in geometric units
+uniform float dt = 0.05; 
 
 uniform vec3 camPos;
 uniform vec3 camFront;
 uniform vec3 camUp;
 uniform vec3 camRight;
 
-const float G = 6.67430e-11;
-const float c = 299792458.0;
-
-float get_rs() {
-    return (2.0 * G * bhMass) / (c * c);
+// 1. Solve for Boyer-Lindquist radial coordinate 'r'
+float get_r(vec3 pos, float a) {
+    float R2 = dot(pos, pos);
+    float a2 = a * a;
+    float z2 = pos.z * pos.z;
+    
+    // Explicit solution to the implicit Kerr coordinate equation
+    float r2 = 0.5 * (R2 - a2 + sqrt(pow(R2 - a2, 2.0) + 4.0 * a2 * z2));
+    return sqrt(max(r2, 0.0001)); // Clamp to prevent division by zero at the singularity
 }
 
-vec3 getAcceleration(vec3 position, vec3 velocity)
-{
-    vec3 r_vec_current = position - bhPosition;
-    float r_current = length(r_vec_current);
-    vec3 cross_product = cross(r_vec_current, velocity);
-    float h2 = dot(cross_product, cross_product);
-    float rs = get_rs();
-    float coeff = -1.5 * rs * h2 / pow(r_current, 5.0);
-    return coeff * r_vec_current;
+// 2. Calculate the Kerr-Schild Metric Tensor g_mu_nu
+mat4 get_metric(vec4 pos4) {
+    vec3 pos = pos4.yzw; // pos4 is (t, x, y, z)
+    float a = spin * M;
+    float r = get_r(pos, a);
+    
+    float r2 = r * r;
+    float a2 = a * a;
+    
+    // Scalar potential function f
+    float f = (2.0 * M * r * r2) / (r2 * r2 + a2 * pos.z * pos.z);
+    
+    // Null vector l_mu
+    float denom = r2 + a2;
+    vec4 l = vec4(
+        1.0, 
+        (r * pos.x + a * pos.y) / denom, 
+        (r * pos.y - a * pos.x) / denom, 
+        pos.z / r
+    );
+    
+    // Minkowski metric eta_mu_nu
+    mat4 eta = mat4(0.0);
+    eta[0][0] = -1.0;
+    eta[1][1] = 1.0;
+    eta[2][2] = 1.0;
+    eta[3][3] = 1.0;
+    
+    // Construct g_mu_nu = eta_mu_nu + f * l_mu * l_nu
+    mat4 g = eta;
+    for(int i = 0; i < 4; i++) {
+        for(int j = 0; j < 4; j++) {
+            g[i][j] += f * l[i] * l[j];
+        }
+    }
+    return g;
+}
+
+// 3. Calculate 4D Geodesic Acceleration using Numerical Derivatives
+vec4 getAcceleration(vec4 pos, vec4 vel) {
+    float eps = 0.005; // Finite difference step size
+    
+    mat4 g = get_metric(pos);
+    mat4 g_inv = inverse(g);
+    
+    // Calculate partial derivatives of the metric (dg / dx^alpha)
+    mat4 dg_dx[4];
+    for(int i = 0; i < 4; i++) {
+        vec4 pos_plus = pos;
+        vec4 pos_minus = pos;
+        pos_plus[i] += eps;
+        pos_minus[i] -= eps;
+        
+        dg_dx[i] = (get_metric(pos_plus) - get_metric(pos_minus)) / (2.0 * eps);
+    }
+    
+    vec4 acc = vec4(0.0);
+    // Contract the Christoffel symbols with the 4-velocity
+    for(int mu = 0; mu < 4; mu++) {
+        for(int alpha = 0; alpha < 4; alpha++) {
+            for(int beta = 0; beta < 4; beta++) {
+                float christoffel = 0.0;
+                for(int rho = 0; rho < 4; rho++) {
+                    christoffel += 0.5 * g_inv[mu][rho] * (
+                        dg_dx[beta][alpha][rho] + 
+                        dg_dx[alpha][beta][rho] - 
+                        dg_dx[rho][alpha][beta]
+                    );
+                }
+                acc[mu] -= christoffel * vel[alpha] * vel[beta];
+            }
+        }
+    }
+    return acc;
 }
 
 void main()
@@ -49,77 +122,66 @@ void main()
     // Calculate direction based on the camera's basis vectors
     vec3 rayDir = normalize(camFront + uv.x * aspect * camRight + uv.y * camUp);
 
-    vec3 position = camPos; 
-    vec3 velocity = rayDir * 0.01; // Initial photon speed
+    vec4 position = vec4(0.0, camPos.x, camPos.y, camPos.z); //Initial photon position in 4D (t, x, y, z)
+    vec4 velocity = vec4(1.0, rayDir.x, rayDir.y, rayDir.z); // Initial photon speed
     vec4 finalColor = vec4(0.0, 0.0, 0.0, 1.0); // Default to black
     
-    float rs = get_rs();
+    float a = spin * M; // Spin parameter
+    float event_horizon = M + sqrt(M * M - a * a); // Event horizon radius
+
     const int MAX_STEPS = 10000; // Prevent infinite loops
 
     for(int step = 0; step < MAX_STEPS; step++)
     {
+        float r_current = length(position.yzw); // Current radial distance from the black hole
+
+        // Dynamically scale the step size:
+        // Close to the black hole, multiplier is 1.0 (fine precision).
+        // Far away, the multiplier scales up, allowing massive leaps through empty space.
+        float dynamic_dt = dt * max(1.0, r_current / 3.0);
+
         // 1. RK4 Integration
-        vec3 k1_v = getAcceleration(position, velocity);
-        vec3 k1_p = velocity;
+        vec4 k1_v = getAcceleration(position, velocity);
+        vec4 k1_p = velocity;
 
-        vec3 k2_v = getAcceleration(position + k1_p * (dt * 0.5), velocity + k1_v * (dt * 0.5));
-        vec3 k2_p = velocity + k1_v * (dt * 0.5);
+        vec4 k2_v = getAcceleration(position + k1_p * (dynamic_dt * 0.5), velocity + k1_v * (dynamic_dt * 0.5));
+        vec4 k2_p = velocity + k1_v * (dynamic_dt * 0.5);
 
-        vec3 k3_v = getAcceleration(position + k2_p * (dt * 0.5), velocity + k2_v * (dt * 0.5));
-        vec3 k3_p = velocity + k2_v * (dt * 0.5);
+        vec4 k3_v = getAcceleration(position + k2_p * (dynamic_dt * 0.5), velocity + k2_v * (dynamic_dt * 0.5));
+        vec4 k3_p = velocity + k2_v * (dynamic_dt * 0.5);
+        vec4 k4_v = getAcceleration(position + k3_p * dynamic_dt, velocity + k3_v * dynamic_dt);
+        vec4 k4_p = velocity + k3_v * dynamic_dt;
 
-        vec3 k4_v = getAcceleration(position + k3_p * dt, velocity + k3_v * dt);
-        vec3 k4_p = velocity + k3_v * dt;
+        vec4 new_velocity = velocity + (dynamic_dt / 6.0) * (k1_v + 2.0 * k2_v + 2.0 * k3_v + k4_v);
+        vec4 new_position = position + (dynamic_dt / 6.0) * (k1_p + 2.0 * k2_p + 2.0 * k3_p + k4_p);
 
-        vec3 new_velocity = velocity + (dt / 6.0) * (k1_v + 2.0 * k2_v + 2.0 * k3_v + k4_v);
-        vec3 new_position = position + (dt / 6.0) * (k1_p + 2.0 * k2_p + 2.0 * k3_p + k4_p);
-
-        // 2. Event Horizon Check
-        float r = length(new_position - bhPosition);
-        if(r <= rs)
+        // 2. Event Horizon Check (Boyer-Lindquist radial coordinate))
+        float r = get_r(new_position.yzw, a);
+        if(r <= event_horizon * 1.05) //small padding to prevent precision collapse at singularity
         {
-            finalColor = vec4(0.0, 0.0, 0.0, 1.0); // Pitch black
-            break; 
+            finalColor = vec4(0.0, 0.0, 0.0, 1.0); // Black for inside the event horizon
+            break; // Stop tracing once it crosses the event horizon
         }
-
-        // 3. Accretion Disk Check (Equatorial crossing)
-        if (position.y * new_position.y <= 0.0) 
+        
+        //Escape check: if the photon is far enough away, sample the skybox for color
+        // 2. Escape Check (Adjusted for geometric units)
+        if(length(new_position.yzw) > 50.0)
         {
-            if (r > 1.5 * rs && r < 4.0 * rs) 
+            vec3 dir = normalize(new_velocity.yzw);
+    
+            if(length(new_position.yzw) > 15.0 && dot(new_position.yzw, new_velocity.yzw) > 0.0)
             {
-                float v_orb = sqrt(G * bhMass / r);
-                vec3 r_dir = normalize(vec3(new_position.x, 0.0, new_position.z));
-                vec3 v_vec = v_orb * vec3(-r_dir.z, 0.0, r_dir.x); 
-                
-                vec3 beta = v_vec / c;
-                float beta_mag = length(beta);
-                float gamma = 1.0 / sqrt(1.0 - beta_mag * beta_mag);
-                
-                vec3 photon_dir = normalize(-velocity);
-                float doppler = 1.0 / (gamma * (1.0 - dot(beta, photon_dir)));
-                float intensity = pow(doppler, 3.0);
-                
-                vec3 diskBaseColor = vec3(1.0, 0.4, 0.1); 
-                finalColor = vec4(diskBaseColor * intensity, 1.0);
-                break; // Stop tracing once it hits the solid disk
-            }
-        }
+                // Procedural 3D grid
+                float gridX = step(0.95, fract(dir.x * 10.0));
+                float gridY = step(0.95, fract(dir.y * 10.0));
+                float gridZ = step(0.95, fract(dir.z * 10.0));
 
-        // 4. Escape Check (Ray leaves the simulation area)
-        if(abs(new_position.x) > 20.0 || abs(new_position.y) > 20.0 || abs(new_position.z) > 20.0)
-        {
-            vec3 dir = normalize(new_velocity);
+                // If the ray is far enough away AND its velocity is pointing outward
+                float combinedGrid = clamp(gridX + gridY + gridZ, 0.0, 1.0);
     
-            // Creates a 3D grid pattern to clearly visualize the gravitational distortion
-            float gridX = step(0.95, fract(dir.x * 10.0));
-            float gridY = step(0.95, fract(dir.y * 10.0));
-            float gridZ = step(0.95, fract(dir.z * 10.0));
-    
-            float combinedGrid = clamp(gridX + gridY + gridZ, 0.0, 1.0);
-    
-            // Output a white grid on a dark blue background
-            finalColor = vec4(vec3(0.0, 0.1, 0.2) + combinedGrid, 1.0);
-            break; 
+                finalColor = vec4(vec3(0.0, 0.1, 0.2) + combinedGrid, 1.0);
+                break; 
+            }
         }
 
         position = new_position;

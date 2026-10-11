@@ -101,8 +101,8 @@ int main()
 	quadVAO.LinkAttrib(quadVBO, 1, 2, GL_FLOAT, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 	quadVAO.Unbind();
 
-	const unsigned int TEXTURE_WIDTH = 800;
-	const unsigned int TEXTURE_HEIGHT = 600;
+	const unsigned int TEXTURE_WIDTH = 700;
+	const unsigned int TEXTURE_HEIGHT = 500;
 
 	GLuint renderTexture;
 	glGenTextures(1, &renderTexture);
@@ -120,7 +120,7 @@ int main()
 	glBindImageTexture(0, renderTexture, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
 
 	//camera activation
-	Camera camera(glm::vec3(0.0f, 0.0f, 5.0f), 800.0f, 600.0f);
+	Camera camera(glm::vec3(0.0f, 0.0f, 15.0f), 800.0f, 600.0f);
 	glfwSetWindowUserPointer(engine.window, &camera);
 	glfwSetScrollCallback(engine.window, Camera::scrollCallback);
 
@@ -148,6 +148,7 @@ int main()
 		computeShader.Activate();
 		glUniform3fv(glGetUniformLocation(computeShader.ID, "bhPosition"), 1, glm::value_ptr(blackHole.position));
 		glUniform1f(glGetUniformLocation(computeShader.ID, "bhMass"), (float)blackHole.mass);
+		//TODO: leaving this causes ray tunneling, but removing it causes massive performance strain.
 		glUniform1f(glGetUniformLocation(computeShader.ID, "dt"), 5.0f);
 
 		// Assuming an 8x8 local workgroup size in the new compute shader
