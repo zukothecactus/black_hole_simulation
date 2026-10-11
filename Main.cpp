@@ -101,8 +101,8 @@ int main()
 	quadVAO.LinkAttrib(quadVBO, 1, 2, GL_FLOAT, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 	quadVAO.Unbind();
 
-	const unsigned int TEXTURE_WIDTH = 700;
-	const unsigned int TEXTURE_HEIGHT = 500;
+	const unsigned int TEXTURE_WIDTH = 600;
+	const unsigned int TEXTURE_HEIGHT = 400;
 
 	GLuint renderTexture;
 	glGenTextures(1, &renderTexture);
@@ -149,7 +149,7 @@ int main()
 		glUniform3fv(glGetUniformLocation(computeShader.ID, "bhPosition"), 1, glm::value_ptr(blackHole.position));
 		glUniform1f(glGetUniformLocation(computeShader.ID, "bhMass"), (float)blackHole.mass);
 		//TODO: leaving this causes ray tunneling, but removing it causes massive performance strain.
-		glUniform1f(glGetUniformLocation(computeShader.ID, "dt"), 5.0f);
+		//glUniform1f(glGetUniformLocation(computeShader.ID, "dt"), 5.0f);
 
 		// Assuming an 8x8 local workgroup size in the new compute shader
 		GLuint workgroupsX = (TEXTURE_WIDTH + 7) / 8;

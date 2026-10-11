@@ -57,9 +57,23 @@ print("Optimizing equations via Common Subexpression Elimination...")
 optimizations, final_accel = sp.cse(accel)
 
 print("\n--- COPY BELOW THIS LINE INTO YOUR GLSL SHADER ---")
+
+def clean_glsl(expr):
+    # Convert SymPy expression to C code string
+    code = sp.ccode(expr)
+    
+    # Fix strict GLSL float typing for pow()
+    for i in range(2, 10):
+        code = code.replace(f", {i})", f", {i}.0)")
+        code = code.replace(f", -{i})", f", -{i}.0)")
+    
+    # Fix potential integer divisions
+    code = code.replace(" 1/2", " 0.5").replace("(1/2)", "(0.5)")
+    return code
+
 for var_name, expr in optimizations:
-    print(f"float {var_name} = {sp.ccode(expr)};")
+    print(f"float {var_name} = {clean_glsl(expr)};")
 
 print()
 for i in range(4):
-    print(f"acc[{i}] = {sp.ccode(final_accel[i])};")
+    print(f"acc[{i}] = {clean_glsl(final_accel[i])};")
