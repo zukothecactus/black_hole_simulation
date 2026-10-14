@@ -87,14 +87,14 @@ vec4 getAcceleration(vec4 pos, vec4 vel) {
 
     vec4 acc;
 
-    float x0 = pow(vt, 2.0);
-    float x1 = pow(a, 2.0);
-    float x2 = pow(pos_z, 2.0);
+    float x0 = ((vt) * (vt));
+    float x1 = ((a) * (a));
+    float x2 = ((pos_z) * (pos_z));
     float x3 = x1*x2;
-    float x4 = pow(pos_x, 2.0);
-    float x5 = pow(pos_y, 2.0);
+    float x4 = ((pos_x) * (pos_x));
+    float x5 = ((pos_y) * (pos_y));
     float x6 = -x1 + x2 + x4 + x5;
-    float x7 = sqrt(4*x3 + pow(x6, 2.0));
+    float x7 = sqrt(4*x3 + ((x6) * (x6)));
     float x8 = 1.0/x7;
     float x9 = 2*pos_z;
     float x10 = x8*(4*pos_z*x1 + x6*x9);
@@ -102,31 +102,31 @@ vec4 getAcceleration(vec4 pos, vec4 vel) {
     float x12 = 0.5*x2 + 0.5*x4 + 0.5*x5 + 0.5*x7;
     float x13 = -x11 + x12;
     float x14 = sqrt(x13);
-    float x15 = pow(x13, 2.0);
+    float x15 = ((x13) * (x13));
     float x16 = x15 + x3;
     float x17 = 1.0/x16;
     float x18 = M*x17;
     float x19 = 2.0*x18;
     float x20 = x14*x19;
     float x21 = x20*(1.5*pos_z + 0.75*x10);
-    float x22 = pow(x13, 3.0/2.0);
+    float x22 = ((x13) * sqrt(x13));
     float x23 = 2.0*pos_z;
-    float x24 = 1.0*x10 + x23;
+    float x24 = x10 + x23;
     float x25 = -x1*x9 - x13*x24;
-    float x26 = pow(x16, -2.0);
+    float x26 = (1.0 / ((x16) * (x16)));
     float x27 = M*x26;
     float x28 = 2.0*x27;
     float x29 = x25*x28;
     float x30 = x22*x29;
     float x31 = x21 + x30;
     float x32 = -x31;
-    float x33 = 1.0*pos_z;
+    float x33 = pos_z;
     float x34 = x13*x18;
     float x35 = x33*x34;
     float x36 = x32*x35;
     float x37 = x11 + x12;
     float x38 = 1.0/x37;
-    float x39 = 1.0*x18;
+    float x39 = x18;
     float x40 = x22*x39;
     float x41 = x38*x40;
     float x42 = 1.5*pos_x;
@@ -135,7 +135,7 @@ vec4 getAcceleration(vec4 pos, vec4 vel) {
     float x45 = x20*x44;
     float x46 = 2.0*pos_x;
     float x47 = x43*x46 + x46;
-    float x48 = pow(x13, 5.0/2.0);
+    float x48 = ((x13) * (x13) * sqrt(x13));
     float x49 = -2.0*M*x26*x47*x48 + x45;
     float x50 = -x49;
     float x51 = pos_x*x14;
@@ -151,7 +151,7 @@ vec4 getAcceleration(vec4 pos, vec4 vel) {
     float x61 = -a*pos_x + pos_y*x14;
     float x62 = x41*x61;
     float x63 = -x40 - 0.5;
-    float x64 = 1.0*pos_x;
+    float x64 = pos_x;
     float x65 = x43*x64 + x64;
     float x66 = x15*x47;
     float x67 = x23*x27;
@@ -162,14 +162,14 @@ vec4 getAcceleration(vec4 pos, vec4 vel) {
     float x72 = x38*x52;
     float x73 = 0.5*x10 + x33;
     float x74 = -x73;
-    float x75 = pow(x37, -2.0);
+    float x75 = (1.0 / ((x37) * (x37)));
     float x76 = x22*x75;
     float x77 = x19*x76;
     float x78 = x52*x77;
     float x79 = x21*x72 + x30*x72 + x46*x71 + x74*x78;
     float x80 = -2.0*M*pos_z*x17*x65 + x68 + x79;
     float x81 = x41*x52;
-    float x82 = 1.0*pos_y;
+    float x82 = pos_y;
     float x83 = x43*x82 + x82;
     float x84 = x15*x58;
     float x85 = x67*x84;
@@ -207,7 +207,7 @@ vec4 getAcceleration(vec4 pos, vec4 vel) {
     float x117 = x116*x35;
     float x118 = -x114;
     float x119 = vy*x90;
-    float x120 = pow(vz, 2.0);
+    float x120 = ((vz) * (vz));
     float x121 = 4.0*x18;
     float x122 = x121*x13;
     float x123 = pos_z*x121;
@@ -237,8 +237,8 @@ vec4 getAcceleration(vec4 pos, vec4 vel) {
     float x147 = x134 - x136;
     float x148 = x147*x35;
     float x149 = -x24;
-    float x150 = pow(x52, 2.0);
-    float x151 = x22/pow(x37, 3.0);
+    float x150 = ((x52) * (x52));
+    float x151 = x22/((x37) * (x37) * (x37));
     float x152 = x151*x19;
     float x153 = x150*x152;
     float x154 = x150*x75;
@@ -271,7 +271,7 @@ vec4 getAcceleration(vec4 pos, vec4 vel) {
     float x181 = vz*x180;
     float x182 = x142 - x143;
     float x183 = x182*x35;
-    float x184 = pow(x61, 2.0);
+    float x184 = ((x61) * (x61));
     float x185 = x152*x184;
     float x186 = x184*x75;
     float x187 = pos_y*x145*x69 + x149*x185 + x186*x21 + x186*x30;
@@ -279,7 +279,7 @@ vec4 getAcceleration(vec4 pos, vec4 vel) {
     float x189 = -x161 - x162 - x163 + x164;
     float x190 = x165 + x167 + x169 + x170 - x171 + x173 + x175 + x176 + x177 + x189;
     float x191 = 2*vy*vz;
-    float x192 = pow(vx, 2.0);
+    float x192 = ((vx) * (vx));
     float x193 = x121*x52;
     float x194 = x193*x76;
     float x195 = x14*x38;
@@ -306,7 +306,7 @@ vec4 getAcceleration(vec4 pos, vec4 vel) {
     float x216 = x121*x61;
     float x217 = x216*x76;
     float x218 = x110*x194 + x14*x144*x196 - x174*x198 + x200*x217 + x203*x215 - x209 - x210 + x211 - x213;
-    float x219 = pow(vy, 2.0);
+    float x219 = ((vy) * (vy));
     float x220 = x197*x58;
     float x221 = pos_y*x96;
     float x222 = x14 + x221;
@@ -334,9 +334,9 @@ vec4 getAcceleration(vec4 pos, vec4 vel) {
     float x244 = x35*x72;
 
     acc[0] = -x0*(x36 + x41*x53 + x60*x62) - x115*(x114*x62 + x49*x63 + x93) - x119*(x117 + x118*x81 + x59*x63) - x120*(x128*x63 + x132 + x141*x81 + x146*x62) - x181*(x148 + x155*x81 + x158*x63 + x179*x62) - x191*(x183 + x187*x62 + x188*x63 + x190*x81) - x192*(x202*x63 + x205*x81 + x207 + x218*x62) - x219*(x223*x63 + x224*x62 + x226 + x231*x81) - x237*(x232*x81 + x233*x62 + x234*x63 + x236) - x91*(x31*x63 + x62*x89 + x80*x81);
-    acc[1] = -x0*(x239*x50 - x240*x60 - x36*x72) - x115*(1.0*M*x17*x22*x38*x49*x52 - x114*x240 - x72*x93) - x119*(-x117*x72 + x118*x239 + x59*x81) - x120*(1.0*M*x128*x17*x22*x38*x52 - x132*x72 + x141*x239 - x146*x240) - x181*(1.0*M*x158*x17*x22*x38*x52 - x148*x72 + x155*x239 - x179*x240) - x191*(1.0*M*x17*x188*x22*x38*x52 - x183*x72 - x187*x240 + x190*x239) - x192*(1.0*M*x17*x202*x22*x38*x52 + x205*x239 - x207*x72 - x218*x240) - x219*(1.0*M*x17*x22*x223*x38*x52 - x224*x240 - x226*x72 + x231*x239) - x237*(1.0*M*x17*x22*x234*x38*x52 + x232*x239 - x233*x240 - x236*x72) - x91*(x239*x80 - x240*x89 + x31*x81);
-    acc[2] = -x0*(-x238*x53*x61 + x241*x60 - x36*x86) - x115*(x114*x241 + x49*x62 - x86*x93) - x119*(1.0*M*x17*x22*x38*x59*x61 - x117*x86 - x118*x240) - x120*(1.0*M*x128*x17*x22*x38*x61 - x132*x86 - x141*x240 + x146*x241) - x181*(1.0*M*x158*x17*x22*x38*x61 - x148*x86 - x155*x240 + x179*x241) - x191*(1.0*M*x17*x188*x22*x38*x61 - x183*x86 + x187*x241 - x190*x240) - x192*(1.0*M*x17*x202*x22*x38*x61 - x205*x240 - x207*x86 + x218*x241) - x219*(1.0*M*x17*x22*x223*x38*x61 + x224*x241 - x226*x86 - x231*x240) - x237*(1.0*M*x17*x22*x234*x38*x61 - x232*x240 + x233*x241 - x236*x86) - x91*(-x240*x80 + x241*x89 + x31*x62);
-    acc[3] = -x0*(x242*x32 - x243*x60 - x35*x38*x53) - x115*(-x114*x243 + x242*x92 + x35*x49) - x119*(x116*x242 - x118*x244 + x35*x59) - x120*(1.0*M*pos_z*x128*x13*x17 + x131*x242 - x141*x244 - x146*x243) - x181*(1.0*M*pos_z*x13*x158*x17 + x147*x242 - x155*x244 - x179*x243) - x191*(1.0*M*pos_z*x13*x17*x188 + x182*x242 - x187*x243 - x190*x244) - x192*(1.0*M*pos_z*x13*x17*x202 - x205*x244 + x206*x242 - x218*x243) - x219*(1.0*M*pos_z*x13*x17*x223 - x224*x243 + x225*x242 - x231*x244) - x237*(1.0*M*pos_z*x13*x17*x234 - x232*x244 - x233*x243 + x235*x242) - x91*(1.0*M*pos_z*x13*x17*x31 - x243*x89 - x244*x80);
+    acc[1] = -x0*(x239*x50 - x240*x60 - x36*x72) - x115*(M*x17*x22*x38*x49*x52 - x114*x240 - x72*x93) - x119*(-x117*x72 + x118*x239 + x59*x81) - x120*(M*x128*x17*x22*x38*x52 - x132*x72 + x141*x239 - x146*x240) - x181*(M*x158*x17*x22*x38*x52 - x148*x72 + x155*x239 - x179*x240) - x191*(M*x17*x188*x22*x38*x52 - x183*x72 - x187*x240 + x190*x239) - x192*(M*x17*x202*x22*x38*x52 + x205*x239 - x207*x72 - x218*x240) - x219*(M*x17*x22*x223*x38*x52 - x224*x240 - x226*x72 + x231*x239) - x237*(M*x17*x22*x234*x38*x52 + x232*x239 - x233*x240 - x236*x72) - x91*(x239*x80 - x240*x89 + x31*x81);
+    acc[2] = -x0*(-x238*x53*x61 + x241*x60 - x36*x86) - x115*(x114*x241 + x49*x62 - x86*x93) - x119*(M*x17*x22*x38*x59*x61 - x117*x86 - x118*x240) - x120*(M*x128*x17*x22*x38*x61 - x132*x86 - x141*x240 + x146*x241) - x181*(M*x158*x17*x22*x38*x61 - x148*x86 - x155*x240 + x179*x241) - x191*(M*x17*x188*x22*x38*x61 - x183*x86 + x187*x241 - x190*x240) - x192*(M*x17*x202*x22*x38*x61 - x205*x240 - x207*x86 + x218*x241) - x219*(M*x17*x22*x223*x38*x61 + x224*x241 - x226*x86 - x231*x240) - x237*(M*x17*x22*x234*x38*x61 - x232*x240 + x233*x241 - x236*x86) - x91*(-x240*x80 + x241*x89 + x31*x62);
+    acc[3] = -x0*(x242*x32 - x243*x60 - x35*x38*x53) - x115*(-x114*x243 + x242*x92 + x35*x49) - x119*(x116*x242 - x118*x244 + x35*x59) - x120*(M*pos_z*x128*x13*x17 + x131*x242 - x141*x244 - x146*x243) - x181*(M*pos_z*x13*x158*x17 + x147*x242 - x155*x244 - x179*x243) - x191*(M*pos_z*x13*x17*x188 + x182*x242 - x187*x243 - x190*x244) - x192*(M*pos_z*x13*x17*x202 - x205*x244 + x206*x242 - x218*x243) - x219*(M*pos_z*x13*x17*x223 - x224*x243 + x225*x242 - x231*x244) - x237*(M*pos_z*x13*x17*x234 - x232*x244 - x233*x243 + x235*x242) - x91*(M*pos_z*x13*x17*x31 - x243*x89 - x244*x80);
 
 
     return acc;

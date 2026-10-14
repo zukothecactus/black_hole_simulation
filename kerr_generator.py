@@ -1,4 +1,5 @@
 import sympy as sp
+import re # for cleaning up the GLSL code
 
 # 1. Define real symbolic variables
 t, x, y, z, M, a = sp.symbols('pos_t pos_x pos_y pos_z M a', real=True)
@@ -31,7 +32,7 @@ for i in range(4):
     for j in range(4):
         g_mu_nu[i, j] = eta[i, j] + f * l_lower[i] * l_lower[j]
 
-# TRICK 1: Analytical Inverse to prevent SymPy from freezing
+# Analytical Inverse to prevent SymPy from freezing
 l_upper = [-1.0, l_lower[1], l_lower[2], l_lower[3]]
 g_inv = sp.zeros(4, 4)
 for i in range(4):
@@ -53,7 +54,7 @@ for mu in range(4):
             accel[mu] -= christoffel * velocities[alpha] * velocities[beta]
 
 print("Optimizing equations via Common Subexpression Elimination...")
-# TRICK 2: Extract repeated calculations into temporary variables
+# Extract repeated calculations into temporary variables
 optimizations, final_accel = sp.cse(accel)
 
 print("\n--- COPY BELOW THIS LINE INTO YOUR GLSL SHADER ---")
@@ -62,13 +63,28 @@ def clean_glsl(expr):
     # Convert SymPy expression to C code string
     code = sp.ccode(expr)
     
-    # Fix strict GLSL float typing for pow()
+    # 1. Normalize fractional representations
+    code = code.replace("3.0/2.0", "1.5").replace("5.0/2.0", "2.5")
+    code = code.replace(" 1/2", " 0.5").replace("(1/2)", "(0.5)")
+    
+    # 2. Fast Math: Eliminate pow() for squares and common fractions
+    code = re.sub(r'pow\(([^,]+),\s*2(?:\.0)?\)', r'((\1) * (\1))', code)
+    code = re.sub(r'pow\(([^,]+),\s*-2(?:\.0)?\)', r'(1.0 / ((\1) * (\1)))', code)
+    code = re.sub(r'pow\(([^,]+),\s*3(?:\.0)?\)', r'((\1) * (\1) * (\1))', code)
+    
+    # Matches pow(var, 1.5) -> var * sqrt(var)
+    code = re.sub(r'pow\(([^,]+),\s*1\.5\)', r'((\1) * sqrt(\1))', code)
+    # Matches pow(var, 2.5) -> var * var * sqrt(var)
+    code = re.sub(r'pow\(([^,]+),\s*2\.5\)', r'((\1) * (\1) * sqrt(\1))', code)
+    
+    # 3. Strip redundant 1.0 * multipliers (negative lookbehind prevents changing 21.0*x to 2x)
+    code = re.sub(r'(?<!\d)1\.0\*', '', code)
+    
+    # 4. Fix strict GLSL float typing for any remaining pow() functions
     for i in range(2, 10):
         code = code.replace(f", {i})", f", {i}.0)")
         code = code.replace(f", -{i})", f", -{i}.0)")
-    
-    # Fix potential integer divisions
-    code = code.replace(" 1/2", " 0.5").replace("(1/2)", "(0.5)")
+        
     return code
 
 for var_name, expr in optimizations:
