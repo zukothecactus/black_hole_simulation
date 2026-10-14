@@ -21,22 +21,17 @@
   <ItemGroup>
     <ClCompile Include="BlackHole.cpp" />
     <ClCompile Include="Camera.cpp" />
-    <ClCompile Include="EBO.cpp" />
     <ClCompile Include="Engine.cpp" />
     <ClCompile Include="glad.c" />
-    <ClCompile Include="LightRay.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="shaderClass.cpp" />
-    <ClCompile Include="stb.cpp" />
     <ClCompile Include="VAO.cpp" />
     <ClCompile Include="VBO.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BlackHole.h" />
     <ClInclude Include="Camera.h" />
-    <ClInclude Include="EBO.h" />
     <ClInclude Include="Engine.h" />
-    <ClInclude Include="LightRay.h" />
     <ClInclude Include="shaderClass.h" />
     <ClInclude Include="VAO.h" />
     <ClInclude Include="VBO.h" />
@@ -47,14 +42,6 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="default.vert" />
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="back.jpg" />
-    <Image Include="bottom.jpg" />
-    <Image Include="front.jpg" />
-    <Image Include="left.jpg" />
-    <Image Include="right.jpg" />
-    <Image Include="top.jpg" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>

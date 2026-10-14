@@ -16,9 +16,6 @@
     <Filter Include="Resource Files\Shaders">
       <UniqueIdentifier>{ac45142d-2e6a-4d8e-bfcd-a3e46fa654ed}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Resource Files\Images">
-      <UniqueIdentifier>{1aba9bbb-3ad7-4722-8be9-e186bdf5a817}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -36,12 +33,6 @@
     <ClCompile Include="BlackHole.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="LightRay.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="EBO.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="VAO.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -49,9 +40,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Camera.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="stb.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -65,16 +53,10 @@
     <ClInclude Include="BlackHole.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="LightRay.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="VAO.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="VBO.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="EBO.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Camera.h">
@@ -93,25 +75,5 @@
     <Text Include="default.vert">
       <Filter>Resource Files\Shaders</Filter>
     </Text>
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="back.jpg">
-      <Filter>Resource Files\Images</Filter>
-    </Image>
-    <Image Include="bottom.jpg">
-      <Filter>Resource Files\Images</Filter>
-    </Image>
-    <Image Include="front.jpg">
-      <Filter>Resource Files\Images</Filter>
-    </Image>
-    <Image Include="left.jpg">
-      <Filter>Resource Files\Images</Filter>
-    </Image>
-    <Image Include="right.jpg">
-      <Filter>Resource Files\Images</Filter>
-    </Image>
-    <Image Include="top.jpg">
-      <Filter>Resource Files\Images</Filter>
-    </Image>
   </ItemGroup>
 </Project>
