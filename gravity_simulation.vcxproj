@@ -43,6 +43,12 @@
   <ItemGroup>
     <Text Include="default.vert" />
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="..\..\..\..\Pictures\Screenshots\Initial position.png" />
+    <Image Include="..\..\..\..\Pictures\Screenshots\Curviture example 1.png" />
+    <Image Include="..\..\..\..\Pictures\Screenshots\Curviture example 2.png" />
+    <Image Include="..\..\..\..\Pictures\Screenshots\Curviture example 3.png" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>

@@ -432,60 +432,66 @@ void main()
         }
         
 
-        // 2. Volumetric Plasma Disk Integration
-        float density = getDiskDensity(new_position.yzw, r);
-
-        if (density > 0.0) 
+        // 3. Volumetric Plasma Disk Integration
+        //Fast bounding box check: Plasma calculations are only done if the ray is actuallt near the disk
+        in_disk = (r>2.0 && r<11.0 && abs(new_position.w) <0.5);
+        if(in_disk)
         {
-            // 1. Calculate Plasma 4-Velocity (Cartesian Kerr approximation)
-            // Angular velocity for prograde circular orbits
-            float omega = 1.0 / (pow(r, 1.5) + a); 
+        
+            float density = getDiskDensity(new_position.yzw, r);
+
+            if (density > 0.0) 
+            {
+                // 1. Calculate Plasma 4-Velocity (Cartesian Kerr approximation)
+                // Angular velocity for prograde circular orbits
+                float omega = 1.0 / (pow(r, 1.5) + a); 
     
-            // Tangential velocity in Cartesian (x, y, z)
-            vec4 u_unnorm = vec4(1.0, -omega * new_position.z, omega * new_position.y, 0.0);
+                // Tangential velocity in Cartesian (x, y, z)
+                vec4 u_unnorm = vec4(1.0, -omega * new_position.z, omega * new_position.y, 0.0);
     
-            // Normalize 4-velocity using the Kerr metric (g_mu_nu * u^mu * u^nu = -1)
-            mat4 metric = get_metric(new_position);
-            vec4 metric_u = metric * u_unnorm;
-            float u_norm_sq = dot(u_unnorm, metric_u);
+                // Normalize 4-velocity using the Kerr metric (g_mu_nu * u^mu * u^nu = -1)
+                mat4 metric = get_metric(new_position);
+                vec4 metric_u = metric * u_unnorm;
+                float u_norm_sq = dot(u_unnorm, metric_u);
     
-            // Prevent NaN if inside the ergosphere/unstable region where u_norm_sq > 0
-            vec4 u_plasma = u_unnorm;
-            if (u_norm_sq < 0.0) {
-                u_plasma = u_unnorm / sqrt(-u_norm_sq);
+                // Prevent NaN if inside the ergosphere/unstable region where u_norm_sq > 0
+                vec4 u_plasma = u_unnorm;
+                if (u_norm_sq < 0.0) {
+                    u_plasma = u_unnorm / sqrt(-u_norm_sq);
+                }
+
+                // 2. Calculate Doppler Factor (g)
+                // p_em = g_mu_nu * p^mu (lowering the index of the photon's 4-velocity)
+                vec4 p_lower = metric * new_velocity;
+                float p_dot_u = dot(p_lower, u_plasma); // E_em = -p_dot_u
+    
+                // g = E_obs / E_em (Assuming E_obs is approx 1.0 at the camera)
+                float g_factor = -1.0 / min(p_dot_u, -0.0001); 
+
+                // 3. Asymmetric Brightness (Intensity scales by g^3)
+                float beaming_intensity = (g_factor * g_factor * g_factor);
+    
+                // 4. Color Shifting (Blueshift vs Redshift)
+                // Base emission shifted by g_factor. High g = blue/white, low g = deep red/dim
+                vec3 shiftedEmission;
+                shiftedEmission.r = baseEmission.r * (g_factor * sqrt(g_factor));
+                shiftedEmission.g = baseEmission.g * (g_factor * g_factor * sqrt(g_factor));
+                shiftedEmission.b = baseEmission.b * (g_factor * g_factor * g_factor * g_factor);
+    
+                // Clamp to prevent blown-out artifacts near the singularity
+                shiftedEmission = clamp(shiftedEmission * beaming_intensity, 0.0, 50.0);
+
+                // Continue with standard volumetric integration
+                float absorption = 1.2; 
+                float stepOpticalDepth = density * absorption * dynamic_dt;
+                float stepTransmittance = exp(-stepOpticalDepth);
+
+                float emissionStr = 1.5;
+                vec3 stepEmission = shiftedEmission * density * emissionStr * dynamic_dt;
+    
+                accumulatedColor += stepEmission * transmittance;
+                transmittance *= stepTransmittance;
             }
-
-            // 2. Calculate Doppler Factor (g)
-            // p_em = g_mu_nu * p^mu (lowering the index of the photon's 4-velocity)
-            vec4 p_lower = metric * new_velocity;
-            float p_dot_u = dot(p_lower, u_plasma); // E_em = -p_dot_u
-    
-            // g = E_obs / E_em (Assuming E_obs is approx 1.0 at the camera)
-            float g_factor = -1.0 / min(p_dot_u, -0.0001); 
-
-            // 3. Asymmetric Brightness (Intensity scales by g^3)
-            float beaming_intensity = pow(g_factor, 3.0);
-    
-            // 4. Color Shifting (Blueshift vs Redshift)
-            // Base emission shifted by g_factor. High g = blue/white, low g = deep red/dim
-            vec3 shiftedEmission;
-            shiftedEmission.r = baseEmission.r * pow(g_factor, 1.5);
-            shiftedEmission.g = baseEmission.g * pow(g_factor, 2.5); // Greens and blues spike faster on blueshift
-            shiftedEmission.b = baseEmission.b * pow(g_factor, 4.0);
-    
-            // Clamp to prevent blown-out artifacts near the singularity
-            shiftedEmission = clamp(shiftedEmission * beaming_intensity, 0.0, 50.0);
-
-            // Continue with standard volumetric integration
-            float absorption = 1.2; 
-            float stepOpticalDepth = density * absorption * dynamic_dt;
-            float stepTransmittance = exp(-stepOpticalDepth);
-
-            float emissionStr = 1.5;
-            vec3 stepEmission = shiftedEmission * density * emissionStr * dynamic_dt;
-    
-            accumulatedColor += stepEmission * transmittance;
-            transmittance *= stepTransmittance;
         }
 
         // Early Ray Termination for Density:

@@ -16,6 +16,9 @@
     <Filter Include="Resource Files\Shaders">
       <UniqueIdentifier>{ac45142d-2e6a-4d8e-bfcd-a3e46fa654ed}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Resource Files\Example Images">
+      <UniqueIdentifier>{6072c7cb-6bb2-4681-a688-aec3a781e76b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -75,5 +78,19 @@
     <Text Include="default.vert">
       <Filter>Resource Files\Shaders</Filter>
     </Text>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="..\..\..\..\Pictures\Screenshots\Initial position.png">
+      <Filter>Resource Files\Example Images</Filter>
+    </Image>
+    <Image Include="..\..\..\..\Pictures\Screenshots\Curviture example 3.png">
+      <Filter>Resource Files\Example Images</Filter>
+    </Image>
+    <Image Include="..\..\..\..\Pictures\Screenshots\Curviture example 2.png">
+      <Filter>Resource Files\Example Images</Filter>
+    </Image>
+    <Image Include="..\..\..\..\Pictures\Screenshots\Curviture example 1.png">
+      <Filter>Resource Files\Example Images</Filter>
+    </Image>
   </ItemGroup>
 </Project>

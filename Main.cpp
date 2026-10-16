@@ -43,8 +43,8 @@ int main()
 	quadVAO.LinkAttrib(quadVBO, 1, 2, GL_FLOAT, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 	quadVAO.Unbind();
 
-	const unsigned int TEXTURE_WIDTH = 600;
-	const unsigned int TEXTURE_HEIGHT = 400;
+	const unsigned int TEXTURE_WIDTH = 800;
+	const unsigned int TEXTURE_HEIGHT = 600;
 
 	GLuint renderTexture;
 	glGenTextures(1, &renderTexture);
