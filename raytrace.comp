@@ -393,10 +393,20 @@ void main()
     {
         float r_current = length(position.yzw); // Current radial distance from the black hole
 
-        // Dynamically scale the step size:
-        // Close to the black hole, multiplier is 1.0 (fine precision).
-        // Far away, the multiplier scales up, allowing massive leaps through empty space.
-        float dynamic_dt = dt * max(1.0, r_current / 3.0);
+        // Spatial Scaling: Gravity is weak far away, so we can afford lower precision.
+        // We scale the step size linearly with distance.
+        float spatial_multiplier = max(1.0, r_current * 0.5); 
+
+        // Volumetric Boundary Check: Are we near the plasma disk?
+        // Your disk exists roughly between r=2.5 and r=10.0, and is very thin on the Z-axis.
+        // (position.w represents the z-coordinate in your 4D vector)
+        bool in_disk = (r_current > 2.0 && r_current < 11.0 && abs(position.w) < 0.5);
+
+        // Final Step Size:
+        // If we are intersecting the disk, we force a small multiplier (1.0x to 2.0x dt) 
+        // to ensure the volumetric gas samples smoothly.
+        // If we are in empty space, we take the massive spatial leaps.
+        float dynamic_dt = dt * (in_disk ? 1.5 : spatial_multiplier);
 
         // 1. RK4 Integration
         vec4 k1_v = getAcceleration(position, velocity);
